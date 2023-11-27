@@ -63,11 +63,7 @@ def export(
     if not opt:
         opt = {}
 
-    if isinstance(w, Workplane):
-        shape = toCompound(w)
-    else:
-        shape = w
-
+    shape = toCompound(w) if isinstance(w, Workplane) else w
     if exportType is None:
         t = fname.split(".")[-1].upper()
         if t in ExportTypes.__dict__.values():
@@ -115,11 +111,7 @@ def export(
         shape.exportStep(fname, **opt)
 
     elif exportType == ExportTypes.STL:
-        if opt:
-            useascii = opt.get("ascii", False) or opt.get("ASCII", False)
-        else:
-            useascii = False
-
+        useascii = opt.get("ascii", False) or opt.get("ASCII", False) if opt else False
         shape.exportStl(fname, tolerance, angularTolerance, useascii)
 
     elif exportType == ExportTypes.VRML:
@@ -164,11 +156,7 @@ def exportShape(
         return shape.tessellate(tolerance, angularTolerance)
 
     shape: Shape
-    if isinstance(w, Workplane):
-        shape = toCompound(w)
-    else:
-        shape = w
-
+    shape = toCompound(w) if isinstance(w, Workplane) else w
     if exportType == ExportTypes.TJS:
         tess = tessellate(shape, angularTolerance)
         mesher = JsonMesh()
@@ -220,7 +208,7 @@ def readAndDeleteFile(fileName):
     """
     res = ""
     with open(fileName, "r") as f:
-        res = "{}".format(f.read())
+        res = f"{f.read()}"
 
     os.remove(fileName)
     return res

@@ -232,12 +232,11 @@ class ConstraintSpec(object):
 
     def _getLin(self, arg: Shape) -> gp_Lin:
 
-        if isinstance(arg, (Edge, Wire)):
-            center = arg.Center()
-            tangent = arg.tangentAt()
-        else:
+        if not isinstance(arg, (Edge, Wire)):
             raise ValueError(f"Cannot construct a plane for {arg}.")
 
+        center = arg.Center()
+        tangent = arg.tangentAt()
         return gp_Lin(center.toPnt(), tangent.toDir())
 
     def toPODs(self) -> Tuple[Constraint, ...]:
@@ -467,10 +466,7 @@ def point_on_line_cost(
 
     dummy = (d - n * ca.dot(d, n)) / scale
 
-    if val == 0:
-        return ca.sumsqr(dummy)
-
-    return (ca.sumsqr(dummy) - val) ** 2
+    return ca.sumsqr(dummy) if val == 0 else (ca.sumsqr(dummy) - val) ** 2
 
 
 # dummy cost, fixed constraint is handled on variable level
@@ -540,9 +536,7 @@ def fixed_rotation_cost(
     q.SetEulerAngles(gp_Extrinsic_XYZ, *val)
     q_dm = ca.DM((q.W(), q.X(), q.Y(), q.Z()))
 
-    dummy = 1 - ca.dot(ca.vertcat(*Quaternion(R1_0 + R1)), q_dm) ** 2
-
-    return dummy
+    return 1 - ca.dot(ca.vertcat(*Quaternion(R1_0 + R1)), q_dm) ** 2
 
 
 # dictionary of individual constraint cost functions

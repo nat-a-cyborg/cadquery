@@ -39,21 +39,22 @@ def process_docstring_multimethod(app, what, name, obj, options, lines):
 
     methods = []
 
-    if what == "method" and isinstance(obj, multimethod):
-        # instance or static method
+    if what == "method":
+        if isinstance(obj, multimethod):
+                    # instance or static method
 
-        # handle functools.singledispatch style register (multiple names)
-        if obj.pending:
-            methods = set(m.__name__ for m in obj.pending)
-        else:
-            methods = set(m.__name__ for m in obj.values())
+                    # handle functools.singledispatch style register (multiple names)
+            if obj.pending:
+                methods = {m.__name__ for m in obj.pending}
+            else:
+                methods = {m.__name__ for m in obj.values()}
 
-    elif what == "method" and inspect.isclassmethod(obj) and hasattr(obj, "pending"):
+        elif inspect.isclassmethod(obj) and hasattr(obj, "pending"):
 
-        if obj.pending:
-            methods = set(m.__name__ for m in obj.pending)
-        else:
-            methods = set(m.__name__ for m in obj.__func__.values())
+            if obj.pending:
+                methods = {m.__name__ for m in obj.pending}
+            else:
+                methods = {m.__name__ for m in obj.__func__.values()}
 
     if methods:
         lines_replace = []
@@ -62,12 +63,7 @@ def process_docstring_multimethod(app, what, name, obj, options, lines):
         indent = -1
         for line in lines:
             if indent < 0:
-                # fix indent when multiple docstrings defined
-                if m := patindent.match(line):
-                    indent = len(m.group(1))
-                else:
-                    indent = 0
-
+                indent = len(m.group(1)) if (m := patindent.match(line)) else 0
             if patsig.match(line):
                 lines_replace.append("")
             else:
@@ -101,9 +97,7 @@ class MultimethodAutosummary(Autosummary):
                     name, prefixes=prefixes
                 )
             except ImportExceptionGroup as exc:
-                errors = list(
-                    set("* %s: %s" % (type(e).__name__, e) for e in exc.exceptions)
-                )
+                errors = list({f"* {type(e).__name__}: {e}" for e in exc.exceptions})
                 logger.warning(
                     __("autosummary: failed to import %s.\nPossible hints:\n%s"),
                     name,
@@ -117,7 +111,7 @@ class MultimethodAutosummary(Autosummary):
             if not isinstance(obj, ModuleType):
                 # give explicitly separated module name, so that members
                 # of inner classes can be documented
-                full_name = modname + "::" + full_name[len(modname) + 1 :]
+                full_name = f"{modname}::{full_name[len(modname) + 1:]}"
             # NB. using full_name here is important, since Documenters
             #     handle module prefixes slightly differently
             documenter = self.create_documenter(self.env.app, obj, parent, full_name)
@@ -215,22 +209,15 @@ class MethodDocumenter(SphinxMethodDocumenter):
         if inspect.is_singledispatch_method(meth):
             # append signature of singledispatch'ed functions
             for typ, func in meth.dispatcher.registry.items():
-                if typ is object:
-                    pass  # default implementation. skipped.
-                else:
-                    dispatchmeth = self.annotate_to_first_argument(func, typ)
-                    if dispatchmeth:
+                if typ is not object:
+                    if dispatchmeth := self.annotate_to_first_argument(func, typ):
                         documenter = MethodDocumenter(self.directive, "")
                         documenter.parent = self.parent
                         documenter.object = dispatchmeth
                         documenter.objpath = [None]
                         sigs.append(documenter.format_signature())
-        # -- multimethod customization
         elif isinstance(meth, multimethod):
-            if meth.pending:
-                methods = meth.pending
-            else:
-                methods = set(meth.values())
+            methods = meth.pending if meth.pending else set(meth.values())
             sigs = self.append_signature_multiple_dispatch(methods)
         elif inspect.isclassmethod(self.object) and hasattr(self.object, "pending"):
             if self.object.pending:

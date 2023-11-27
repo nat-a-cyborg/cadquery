@@ -75,10 +75,7 @@ def guessUnitOfMeasure(shape):
         return UNITS.IN
 
     # no real part would have the sum of its dimensions less than about 5mm
-    if sum(dimList) < 10:
-        return UNITS.IN
-
-    return UNITS.MM
+    return UNITS.IN if sum(dimList) < 10 else UNITS.MM
 
 
 def makeSVGedge(e):
@@ -98,10 +95,10 @@ def makeSVGedge(e):
         point_it = (points.Value(i + 1) for i in range(points.NbPoints()))
 
         p = next(point_it)
-        cs.write("M{},{} ".format(p.X(), p.Y()))
+        cs.write(f"M{p.X()},{p.Y()} ")
 
         for p in point_it:
-            cs.write("L{},{} ".format(p.X(), p.Y()))
+            cs.write(f"L{p.X()},{p.Y()} ")
 
     return cs.getvalue()
 
@@ -115,13 +112,9 @@ def getPaths(visibleShapes, hiddenShapes):
     visiblePaths = []
 
     for s in visibleShapes:
-        for e in s.Edges():
-            visiblePaths.append(makeSVGedge(e))
-
+        visiblePaths.extend(makeSVGedge(e) for e in s.Edges())
     for s in hiddenShapes:
-        for e in s.Edges():
-            hiddenPaths.append(makeSVGedge(e))
-
+        hiddenPaths.extend(makeSVGedge(e) for e in s.Edges())
     return (hiddenPaths, visiblePaths)
 
 
@@ -241,14 +234,14 @@ def getSVG(shape, opts=None):
     bb = Compound.makeCompound(hidden + visible).BoundingBox()
 
     # Determine whether the user wants to fit the drawing to the bounding box
-    if width == None or height == None:
-        # Fit image to specified width (or height)
-        if width == None:
-            width = (height - (2.0 * marginTop)) * (
-                bb.xlen / bb.ylen
-            ) + 2.0 * marginLeft
-        else:
-            height = (width - 2.0 * marginLeft) * (bb.ylen / bb.xlen) + 2.0 * marginTop
+    if width is None:
+        width = (height - (2.0 * marginTop)) * (
+            bb.xlen / bb.ylen
+        ) + 2.0 * marginLeft
+        # width pixels for x, height pixels for y
+        unitScale = (width - 2.0 * marginLeft) / bb.xlen
+    elif height is None:
+        height = (width - 2.0 * marginLeft) * (bb.ylen / bb.xlen) + 2.0 * marginTop
 
         # width pixels for x, height pixels for y
         unitScale = (width - 2.0 * marginLeft) / bb.xlen
@@ -275,10 +268,7 @@ def getSVG(shape, opts=None):
         for p in hiddenPaths:
             hiddenContent += PATHTEMPLATE % p
 
-    visibleContent = ""
-    for p in visiblePaths:
-        visibleContent += PATHTEMPLATE % p
-
+    visibleContent = "".join(PATHTEMPLATE % p for p in visiblePaths)
     # If the caller wants the axes indicator and is using the default direction, add in the indicator
     if showAxes and projectionDir == (-1.75, 1.1, 5):
         axesIndicator = AXES_TEMPLATE % (
@@ -287,7 +277,7 @@ def getSVG(shape, opts=None):
     else:
         axesIndicator = ""
 
-    svg = SVG_TEMPLATE % (
+    return SVG_TEMPLATE % (
         {
             "unitScale": str(unitScale),
             "strokeWidth": str(strokeWidth),
@@ -305,8 +295,6 @@ def getSVG(shape, opts=None):
         }
     )
 
-    return svg
-
 
 def exportSVG(shape, fileName: str, opts=None):
     """
@@ -316,6 +304,5 @@ def exportSVG(shape, fileName: str, opts=None):
     """
 
     svg = getSVG(shape.val(), opts)
-    f = open(fileName, "w")
-    f.write(svg)
-    f.close()
+    with open(fileName, "w") as f:
+        f.write(svg)

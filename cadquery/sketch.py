@@ -323,17 +323,12 @@ class Sketch(object):
         if nx < 1 or ny < 1:
             raise ValueError(f"At least 1 elements required, requested {nx}, {ny}")
 
-        locs = []
-
         offset = Vector((nx - 1) * xs, (ny - 1) * ys) * 0.5
-        for i, j in product(range(nx), range(ny)):
-            locs.append(Location(Vector(i * xs, j * ys) - offset))
-
-        if self._selection:
-            selection: Sequence[Union[Shape, Location, Vector]] = self._selection
-        else:
-            selection = [Vector()]
-
+        locs = [
+            Location(Vector(i * xs, j * ys) - offset)
+            for i, j in product(range(nx), range(ny))
+        ]
+        selection = self._selection if self._selection else [Vector()]
         return self.push(
             (l * el if isinstance(el, Location) else l * Location(el.Center()))
             for l in locs
@@ -363,11 +358,7 @@ class Sketch(object):
             loc = Location(Vector(x, y))
             locs.append(loc)
 
-        if self._selection:
-            selection: Sequence[Union[Shape, Location, Vector]] = self._selection
-        else:
-            selection = [Vector()]
-
+        selection = self._selection if self._selection else [Vector()]
         return self.push(
             (
                 l
@@ -396,28 +387,20 @@ class Sketch(object):
         if not self._selection:
             raise ValueError("Nothing selected to distribute over")
 
-        if 1 - abs(stop - start) < TOL:
-            trimmed = False
-        else:
-            trimmed = True
-
+        trimmed = 1 - abs(stop - start) >= TOL
         # closed edge or wire parameters
         params_closed = [start + i * (stop - start) / n for i in range(n)]
 
         # open or trimmed edge or wire parameters
         params_open = [
-            start + i * (stop - start) / (n - 1) if n - 1 > 0 else start
+            start + i * (stop - start) / (n - 1) if n > 1 else start
             for i in range(n)
         ]
 
         locs = []
         for el in self._selection:
             if isinstance(el, (Wire, Edge)):
-                if el.IsClosed() and not trimmed:
-                    params = params_closed
-                else:
-                    params = params_open
-
+                params = params_closed if el.IsClosed() and not trimmed else params_open
                 if rotate:
                     locs.extend(el.locations(params, planar=True,))
                 else:
@@ -459,11 +442,7 @@ class Sketch(object):
 
         if self._selection and not ignore_selection:
             for el in self._selection:
-                if isinstance(el, Location):
-                    loc = el
-                else:
-                    loc = Location(el.Center())
-
+                loc = el if isinstance(el, Location) else Location(el.Center())
                 locs.append(loc)
 
         else:
@@ -505,7 +484,7 @@ class Sketch(object):
         if self._selection:
             rv = find_hull(el for el in self._selection if isinstance(el, Edge))
         elif self._faces:
-            rv = find_hull(el for el in self._faces.Edges())
+            rv = find_hull(iter(self._faces.Edges()))
         elif self._edges or self._wires:
             rv = find_hull(
                 chain(self._edges, chain.from_iterable(w.Edges() for w in self._wires))

@@ -450,10 +450,7 @@ class TestDxfDocument(BaseTest):
 
         dxf = DxfDocument(setup=True)
 
-        default_layer_names = set()
-        for layer in dxf.document.layers:
-            default_layer_names.add(layer.dxf.name)
-
+        default_layer_names = {layer.dxf.name for layer in dxf.document.layers}
         dxf = dxf.add_layer("layer_1").add_shape(line, "layer_1")
 
         expected_layer_names = default_layer_names.copy()
@@ -529,10 +526,10 @@ class TestExporters(BaseTest):
             p, eType, s, tolerance=tolerance, angularTolerance=angularTolerance
         )
 
-        result = "{}".format(s.getvalue())
+        result = f"{s.getvalue()}"
 
         for q in stringsToFind:
-            self.assertTrue(result.find(q) > -1)
+            self.assertTrue(q in result)
         return result
 
     def _box(self):
@@ -851,7 +848,7 @@ def _dxf_spline_max_degree(fname):
 
     for el in msp:
         if isinstance(el, ezdxf.entities.Spline):
-            rv = el.dxf.degree if el.dxf.degree > rv else rv
+            rv = max(el.dxf.degree, rv)
 
     return rv
 
@@ -861,11 +858,7 @@ def _check_dxf_no_spline(fname):
     dxf = ezdxf.readfile(fname)
     msp = dxf.modelspace()
 
-    for el in msp:
-        if isinstance(el, ezdxf.entities.Spline):
-            return False
-
-    return True
+    return not any(isinstance(el, ezdxf.entities.Spline) for el in msp)
 
 
 def test_dxf_approx():
@@ -904,7 +897,7 @@ def test_dxf_text(tmpdir, testdatadir):
         )
     )
 
-    fname = tmpdir.joinpath(f"dxf_text.dxf").resolve()
+    fname = tmpdir.joinpath("dxf_text.dxf").resolve()
     exporters.exportDXF(w1.section(), fname)
 
     s2 = Sketch().importDXF(fname)

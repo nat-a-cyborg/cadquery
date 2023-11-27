@@ -56,15 +56,8 @@ def importStep(fileName: str) -> "cq.Workplane":
     for i in range(reader.NbRootsForTransfer()):
         reader.TransferRoot(i + 1)
 
-    occ_shapes = []
-    for i in range(reader.NbShapes()):
-        occ_shapes.append(reader.Shape(i + 1))
-
-    # Make sure that we extract all the solids
-    solids = []
-    for shape in occ_shapes:
-        solids.append(Shape.cast(shape))
-
+    occ_shapes = [reader.Shape(i + 1) for i in range(reader.NbShapes())]
+    solids = [Shape.cast(shape) for shape in occ_shapes]
     return cq.Workplane("XY").newObject(solids)
 
 

@@ -55,14 +55,14 @@ class TestImporters(BaseTest):
         """
         Tests STEP file import
         """
-        self.importBox(importers.ImportTypes.STEP, OUTDIR + "/tempSTEP.step")
+        self.importBox(importers.ImportTypes.STEP, f"{OUTDIR}/tempSTEP.step")
 
     def testInvalidSTEP(self):
         """
         Attempting to load an invalid STEP file should throw an exception, but
         not segfault.
         """
-        tmpfile = OUTDIR + "/badSTEP.step"
+        tmpfile = f"{OUTDIR}/badSTEP.step"
         with open(tmpfile, "w") as f:
             f.write("invalid STEP file")
         with self.assertRaises(ValueError):

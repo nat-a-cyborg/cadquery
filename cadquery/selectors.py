@@ -284,11 +284,7 @@ class TypeSelector(Selector):
         self.typeString = typeString.upper()
 
     def filter(self, objectList: Sequence[Shape]) -> List[Shape]:
-        r = []
-        for o in objectList:
-            if o.geomType() == self.typeString:
-                r.append(o)
-        return r
+        return [o for o in objectList if o.geomType() == self.typeString]
 
 
 class _NthSelector(Selector, ABC):
@@ -756,11 +752,10 @@ class _SimpleStringSyntaxSelector(Selector):
         """
         Translate parsed vector string into a CQ Vector
         """
-        if "vector_dir" in pr:
-            vec = pr.vector_dir
-            return Vector(float(vec.x), float(vec.y), float(vec.z))
-        else:
+        if "vector_dir" not in pr:
             return self.axes[pr.simple_dir]
+        vec = pr.vector_dir
+        return Vector(float(vec.x), float(vec.y), float(vec.z))
 
     def filter(self, objectList: Sequence[Shape]):
         r"""

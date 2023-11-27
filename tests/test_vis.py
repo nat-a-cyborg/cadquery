@@ -38,19 +38,19 @@ class FakeInteractor(vtkRenderWindowInteractor):
 
 
 class FakeWindow(vtkRenderWindow):
-    def Render(*args):
+    def Render(self):
 
         pass
 
-    def SetSize(*args):
+    def SetSize(self):
 
         pass
 
-    def GetScreenSize(*args):
+    def GetScreenSize(self):
 
         return 1, 1
 
-    def SetPosition(*args):
+    def SetPosition(self):
 
         pass
 

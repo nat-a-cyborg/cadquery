@@ -81,7 +81,7 @@ class Color(object):
 
     def __init__(self, *args, **kwargs):
 
-        if len(args) == 0:
+        if not args:
             self.wrapped = Quantity_ColorRGBA()
         elif len(args) == 1:
             self.wrapped = Quantity_ColorRGBA()

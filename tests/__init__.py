@@ -6,16 +6,14 @@ import os
 
 
 def readFileAsString(fileName):
-    f = open(fileName, "r")
-    s = f.read()
-    f.close()
+    with open(fileName, "r") as f:
+        s = f.read()
     return s
 
 
 def writeStringToFile(strToWrite, fileName):
-    f = open(fileName, "w")
-    f.write(strToWrite)
-    f.close()
+    with open(fileName, "w") as f:
+        f.write(strToWrite)
 
 
 def makeUnitSquareWire():
@@ -43,7 +41,7 @@ def toTuple(v):
     elif type(v) == Vector:
         return v.toTuple()
     else:
-        raise RuntimeError("dont know how to convert type %s to tuple" % str(type(v)))
+        raise RuntimeError(f"dont know how to convert type {str(type(v))} to tuple")
 
 
 class BaseTest(unittest.TestCase):

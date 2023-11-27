@@ -36,11 +36,7 @@ class ThreeMFWriter(object):
         """
         self.unit = unit
 
-        if isinstance(shape, Compound):
-            shapes = list(shape)
-        else:
-            shapes = [shape]
-
+        shapes = list(shape) if isinstance(shape, Compound) else [shape]
         tessellations = [s.tessellate(tolerance, angularTolerance) for s in shapes]
         # Remove shapes that did not tesselate
         self.tessellations = [t for t in tessellations if all(t)]
@@ -91,7 +87,7 @@ class ThreeMFWriter(object):
             resources,
             "object",
             id=str(no_meshes),
-            name=f"CadQuery Component",
+            name="CadQuery Component",
             type="model",
         )
         components = ET.SubElement(comp_object, "components")

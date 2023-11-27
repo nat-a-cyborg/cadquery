@@ -60,9 +60,9 @@ def _define_grammar():
     TagSeparator = Literal("?").suppress()
 
     Name = delimitedList(
-        Word(alphas, alphanums + "_"), PATH_DELIM, combine=True
+        Word(alphas, f"{alphanums}_"), PATH_DELIM, combine=True
     ).setResultsName("name")
-    Tag = Word(alphas, alphanums + "_").setResultsName("tag")
+    Tag = Word(alphas, f"{alphanums}_").setResultsName("tag")
     Selector = _selector_grammar.setResultsName("selector")
 
     SelectorType = (
@@ -285,7 +285,7 @@ class Assembly(object):
 
         if obj not in self.children and obj is not self:
             locs = []
-            while not obj.parent is self:
+            while obj.parent is not self:
                 locs.append(obj.loc)
                 obj = cast(Assembly, obj.parent)
                 name_out = obj.name
@@ -414,9 +414,7 @@ class Assembly(object):
             ixs = tuple(ents[obj] for obj in c.objects)
             pods = c.toPODs()
 
-            for pod in pods:
-                constraints.append((ixs, pod))
-
+            constraints.extend((ixs, pod) for pod in pods)
         # check if any constraints were specified
         if not constraints:
             raise ValueError("At least one constraint required")
@@ -489,16 +487,12 @@ class Assembly(object):
             exportCAF(self, path)
         elif exportType == "VRML":
             exportVRML(self, path, tolerance, angularTolerance)
-        elif exportType == "GLTF" or exportType == "GLB":
+        elif exportType in ["GLTF", "GLB"]:
             exportGLTF(self, path, None, tolerance, angularTolerance)
         elif exportType == "VTKJS":
             exportVTKJS(self, path)
         elif exportType == "STL":
-            # Handle the ascii setting for STL export
-            export_ascii = False
-            if "ascii" in kwargs:
-                export_ascii = bool(kwargs.get("ascii"))
-
+            export_ascii = bool(kwargs.get("ascii")) if "ascii" in kwargs else False
             self.toCompound().exportStl(path, tolerance, angularTolerance, export_ascii)
         else:
             raise ValueError(f"Unknown format: {exportType}")
@@ -531,9 +525,7 @@ class Assembly(object):
         """
 
         for ch in self.children:
-            for el in ch.traverse():
-                yield el
-
+            yield from ch.traverse()
         yield (self.name, self)
 
     def _flatten(self, parents=[]):

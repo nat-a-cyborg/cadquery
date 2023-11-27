@@ -66,7 +66,7 @@ class TestCadQuery(BaseTest):
 
         So what we do here is to read the existing file, stick in more content, and leave it
         """
-        svgFile = os.path.join(OUTDIR, self._testMethodName + ".svg")
+        svgFile = os.path.join(OUTDIR, f"{self._testMethodName}.svg")
 
         # all tests do not produce output
         if os.path.exists(svgFile):
@@ -90,8 +90,8 @@ class TestCadQuery(BaseTest):
         shape must be a CQ object
         Save models in SVG and STEP format
         """
-        shape.exportSvg(os.path.join(OUTDIR, self._testMethodName + ".svg"))
-        shape.val().exportStep(os.path.join(OUTDIR, self._testMethodName + ".step"))
+        shape.exportSvg(os.path.join(OUTDIR, f"{self._testMethodName}.svg"))
+        shape.val().exportStep(os.path.join(OUTDIR, f"{self._testMethodName}.step"))
 
     def testToOCC(self):
         """
@@ -768,7 +768,7 @@ class TestCadQuery(BaseTest):
 
         # test periodic with parameters
         spline3 = Workplane().spline(
-            points, periodic=True, parameters=[x for x in range(len(points) + 1)]
+            points, periodic=True, parameters=list(range(len(points) + 1))
         )
         self.assertTrue(spline3.val().IsClosed())
 
@@ -842,13 +842,11 @@ class TestCadQuery(BaseTest):
 
         with raises(ValueError):
             Workplane().spline(
-                points, periodic=False, parameters=[x for x in range(len(points) + 1)],
+                points, periodic=False, parameters=list(range(len(points) + 1))
             )
 
         with raises(ValueError):
-            Workplane().spline(
-                points, periodic=True, parameters=[x for x in range(len(points))],
-            )
+            Workplane().spline(points, periodic=True, parameters=list(range(len(points))))
 
     def testRotatedEllipse(self):
         def rotatePoint(x, y, alpha):

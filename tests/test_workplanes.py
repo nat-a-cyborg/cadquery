@@ -217,10 +217,9 @@ class TestWorkplanes(BaseTest):
         # 3 different types of plane definition
         planeArg = ["XY", (0, 0, 1), boxes[0].faces("<Z")]
         planeOffset = (0, 0, 0.5)  # use the safe offset for each
-        boxResults = []  # store the resulting mirrored objects
-        for b, p in zip(boxes, planeArg):
-            boxResults.append(b.mirror(p, planeOffset, union=True))
-
+        boxResults = [
+            b.mirror(p, planeOffset, union=True) for b, p in zip(boxes, planeArg)
+        ]
         # all resulting boxes should be equal to each other
         for i in range(len(boxResults) - 1):
             curBoxDims = boxResults[i].findSolid().BoundingBox()  # get bbox dims
