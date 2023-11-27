@@ -89,7 +89,7 @@ class Vector(object):
                 fV = gp_Vec(args[0])
             else:
                 raise TypeError("Expected three floats, OCC gp_, or 3-tuple")
-        elif len(args) == 0:
+        elif not args:
             fV = gp_Vec(0, 0, 0)
         else:
             raise TypeError("Expected three floats, OCC gp_, or 3-tuple")
@@ -221,10 +221,10 @@ class Vector(object):
         return self.Length
 
     def __repr__(self) -> str:
-        return "Vector: " + str((self.x, self.y, self.z))
+        return f"Vector: {(self.x, self.y, self.z)}"
 
     def __str__(self) -> str:
-        return "Vector: " + str((self.x, self.y, self.z))
+        return f"Vector: {(self.x, self.y, self.z)}"
 
     def __eq__(self, other: "Vector") -> bool:  # type: ignore[override]
         return self.wrapped.IsEqual(other.wrapped, 0.00001, 0.00001)
@@ -289,8 +289,9 @@ class Matrix:
         elif isinstance(matrix, (list, tuple)):
             # Validate matrix size & 4x4 last row value
             valid_sizes = all(
-                (isinstance(row, (list, tuple)) and (len(row) == 4)) for row in matrix
-            ) and len(matrix) in (3, 4)
+                (isinstance(row, (list, tuple)) and (len(row) == 4))
+                for row in matrix
+            ) and len(matrix) in {3, 4}
             if not valid_sizes:
                 raise TypeError(
                     "Matrix constructor requires 2d list of 4x3 or 4x4, but got: {!r}".format(
@@ -313,7 +314,7 @@ class Matrix:
             ]
 
         else:
-            raise TypeError("Invalid param to matrix constructor: {}".format(matrix))
+            raise TypeError(f"Invalid param to matrix constructor: {matrix}")
 
     def rotateX(self, angle: float):
 
@@ -372,12 +373,7 @@ class Matrix:
             raise IndexError("Matrix subscript must provide (row, column)")
         (r, c) = rc
         if (0 <= r <= 3) and (0 <= c <= 3):
-            if r < 3:
-                return self.wrapped.Value(r + 1, c + 1)
-            else:
-                # gp_GTrsf doesn't provide access to the 4th row because it has
-                # an implied value as below:
-                return [0.0, 0.0, 0.0, 1.0][c]
+            return self.wrapped.Value(r + 1, c + 1) if r < 3 else [0.0, 0.0, 0.0, 1.0][c]
         else:
             raise IndexError("Out of bounds access into 4x4 matrix: {!r}".format(rc))
 
@@ -465,7 +461,7 @@ class Plane(object):
         try:
             return namedPlanes[stdName]
         except KeyError:
-            raise ValueError("Supported names are {}".format(list(namedPlanes.keys())))
+            raise ValueError(f"Supported names are {list(namedPlanes.keys())}")
 
     @classmethod
     def XY(cls, origin=(0, 0, 0), xDir=Vector(1, 0, 0)):
@@ -645,9 +641,7 @@ class Plane(object):
             return obj.transformShape(self.fG)
         else:
             raise ValueError(
-                "Don't know how to convert type {} to local coordinates".format(
-                    type(obj)
-                )
+                f"Don't know how to convert type {type(obj)} to local coordinates"
             )
 
     def toWorldCoords(self, tuplePoint) -> Vector:
@@ -919,17 +913,14 @@ class BoundBox(object):
 
     def isInside(self, b2: "BoundBox") -> bool:
         """Is the provided bounding box inside this one?"""
-        if (
+        return (
             b2.xmin > self.xmin
             and b2.ymin > self.ymin
             and b2.zmin > self.zmin
             and b2.xmax < self.xmax
             and b2.ymax < self.ymax
             and b2.zmax < self.zmax
-        ):
-            return True
-        else:
-            return False
+        )
 
 
 class Location(object):
@@ -982,7 +973,7 @@ class Location(object):
 
         T = gp_Trsf()
 
-        if len(args) == 0:
+        if not args:
             pass
         elif len(args) == 1:
             t = args[0]

@@ -74,12 +74,9 @@ def arc_last(x):
 def arc_point(x, val):
 
     if val is None:
-        rv = x[:2]
-    else:
-        a = x[3] + val * x[4]
-        rv = array((x[0] + x[2] * sin(a), x[1] + x[2] * cos(a)))
-
-    return rv
+        return x[:2]
+    a = x[3] + val * x[4]
+    return array((x[0] + x[2] * sin(a), x[1] + x[2] * cos(a)))
 
 
 def line_point(x, val):

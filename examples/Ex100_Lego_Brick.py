@@ -15,11 +15,7 @@ pitch = 8.0
 clearance = 0.1
 bumpDiam = 4.8
 bumpHeight = 1.8
-if thin:
-    height = 3.2
-else:
-    height = 9.6
-
+height = 3.2 if thin else 9.6
 t = (pitch - (2 * clearance) - bumpDiam) / 2.0
 postDiam = pitch - t  # works out to 6.5
 total_length = lbumps * pitch - 2.0 * clearance

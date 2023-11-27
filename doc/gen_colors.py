@@ -28,12 +28,7 @@ def calc_text_color(c: cq.Color) -> str:
     """ Calculate required overlay text color from background color.
     """
     val = sum(c.toTuple()[:3]) / 3
-    if val < 0.5:
-        rv = "255,255,255"
-    else:
-        rv = "0,0,0"
-
-    return rv
+    return "255,255,255" if val < 0.5 else "0,0,0"
 
 
 def get_colors() -> Dict[str, cq.Color]:
@@ -43,7 +38,7 @@ def get_colors() -> Dict[str, cq.Color]:
     for name in dir(Quantity):
         splitted = name.rsplit(SEP, 1)
         if splitted[0] == OCP_COLOR_LEADER:
-            colors.update({splitted[1].lower(): cq.Color(splitted[1])})
+            colors[splitted[1].lower()] = cq.Color(splitted[1])
 
     return colors
 

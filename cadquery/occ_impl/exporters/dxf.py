@@ -157,9 +157,7 @@ class DxfDocument:
             edges = self._ordered_edges(shape)
 
         for edge in edges:
-            converter = self._DISPATCH_MAP.get(edge.geomType(), None)
-
-            if converter:
+            if converter := self._DISPATCH_MAP.get(edge.geomType(), None):
                 entity_type, entity_attributes = converter(edge)
                 entity = factory.new(
                     entity_type, dxfattribs={**entity_attributes, **general_attributes}

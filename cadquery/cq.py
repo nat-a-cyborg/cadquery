@@ -208,17 +208,11 @@ class Workplane(object):
             obj = inPlane
             tmpPlane = Plane.named("XY", origin)
         else:
-            raise ValueError(
-                "Provided value {} is not a valid work plane".format(inPlane)
-            )
+            raise ValueError(f"Provided value {inPlane} is not a valid work plane")
 
         self.plane = tmpPlane
         # Changed so that workplane has the center as the first item on the stack
-        if obj:
-            self.objects = [obj]
-        else:
-            self.objects = []
-
+        self.objects = [obj] if obj else []
         self.parent = None
         self.ctx = CQContext()
         self._tag = None
@@ -258,10 +252,9 @@ class Workplane(object):
             ):
                 for k in getattr(o, "Compounds")():
                     rv[k] = None
-            else:
-                if hasattr(o, propName):
-                    for k in getattr(o, propName)():
-                        rv[k] = None
+            elif hasattr(o, propName):
+                for k in getattr(o, propName)():
+                    rv[k] = None
 
         return list(rv.keys())
 
@@ -308,7 +301,6 @@ class Workplane(object):
             if isinstance(arg, Workplane):
                 self._mergeTags(arg)
 
-        # split using the current workplane
         else:
 
             # boilerplate for arg/kwarg parsing
@@ -347,11 +339,7 @@ class Workplane(object):
             else:
                 # Put the one we are keeping on the stack, and also update the
                 # context solid to the one we kept.
-                if keepTop:
-                    rv = [top]
-                else:
-                    rv = [bottom]
-
+                rv = [top] if keepTop else [bottom]
         return self.newObject(rv)
 
     @deprecate()
@@ -562,15 +550,13 @@ class Workplane(object):
             n1 = f1.normalAt()
 
             # test normals (direction of planes)
-            if not (
-                (abs(n0.x - n1.x) < self.ctx.tolerance)
-                or (abs(n0.y - n1.y) < self.ctx.tolerance)
-                or (abs(n0.z - n1.z) < self.ctx.tolerance)
-            ):
-                return False
-
-            # test if p1 is on the plane of f0 (offset of planes)
-            return abs(n0.dot(p0.sub(p1)) < self.ctx.tolerance)
+            return (
+                False
+                if abs(n0.x - n1.x) >= self.ctx.tolerance
+                and abs(n0.y - n1.y) >= self.ctx.tolerance
+                and abs(n0.z - n1.z) >= self.ctx.tolerance
+                else abs(n0.dot(p0.sub(p1)) < self.ctx.tolerance)
+            )
 
         def _computeXdir(normal):
             """
@@ -592,7 +578,7 @@ class Workplane(object):
         if len(self.objects) > 1:
             objs: List[Face] = [o for o in self.objects if isinstance(o, Face)]
 
-            if not all(o.geomType() in ("PLANE", "CIRCLE") for o in objs) or len(
+            if any(o.geomType() not in ("PLANE", "CIRCLE") for o in objs) or len(
                 objs
             ) < len(self.objects):
                 raise ValueError(
@@ -691,8 +677,7 @@ class Workplane(object):
         :returns: a CQ object with name's workplane
         """
         tagged = self._getTagged(name)
-        out = self.copyWorkplane(tagged)
-        return out
+        return self.copyWorkplane(tagged)
 
     def first(self: T) -> T:
         """
@@ -701,7 +686,7 @@ class Workplane(object):
         :returns: the first item on the stack.
         :rtype: a CQ object
         """
-        return self.newObject(self.objects[0:1])
+        return self.newObject(self.objects[:1])
 
     def item(self: T, i: int) -> T:
         """
@@ -748,12 +733,8 @@ class Workplane(object):
     def _findType(self, types, searchStack=True, searchParents=True):
 
         if searchStack:
-            rv = [s for s in self.objects if isinstance(s, types)]
-            if rv and types == (Solid, Compound):
-                return Compound.makeCompound(rv)
-            elif rv:
-                return rv[0]
-
+            if rv := [s for s in self.objects if isinstance(s, types)]:
+                return Compound.makeCompound(rv) if types == (Solid, Compound) else rv[0]
         if searchParents and self.parent is not None:
             return self.parent._findType(types, searchStack=True, searchParents=True)
 
@@ -785,9 +766,7 @@ class Workplane(object):
 
         if found is None:
             message = "on the stack or " if searchStack else ""
-            raise ValueError(
-                "Cannot find a solid {}in the parent chain".format(message)
-            )
+            raise ValueError(f"Cannot find a solid {message}in the parent chain")
 
         return found
 
@@ -806,7 +785,7 @@ class Workplane(object):
 
         if found is None:
             message = "on the stack or " if searchStack else ""
-            raise ValueError("Cannot find a face {}in the parent chain".format(message))
+            raise ValueError(f"Cannot find a face {message}in the parent chain")
 
         return found
 
@@ -839,15 +818,14 @@ class Workplane(object):
 
         selectorObj: Selector
         if selector:
-            if isinstance(selector, str):
-                selectorObj = StringSyntaxSelector(selector)
-            else:
-                selectorObj = selector
-            toReturn = selectorObj.filter(objs)
+            selectorObj = (
+                StringSyntaxSelector(selector)
+                if isinstance(selector, str)
+                else selector
+            )
+            return selectorObj.filter(objs)
         else:
-            toReturn = objs
-
-        return toReturn
+            return objs
 
     def vertices(
         self: T,
@@ -1068,7 +1046,7 @@ class Workplane(object):
             el.ancestors(ctx_solid, kind) for el in objects if isinstance(el, Shape)
         ]
 
-        return self.newObject(set(el for res in results for el in res))
+        return self.newObject({el for res in results for el in res})
 
     def siblings(self: T, kind: Shapes, level: int = 1, tag: Optional[str] = None) -> T:
         """
@@ -1086,7 +1064,7 @@ class Workplane(object):
 
         results = [el.siblings(ctx_solid, kind, level) for el in shapes]
 
-        return self.newObject(set(el for res in results for el in res) - set(shapes))
+        return self.newObject({el for res in results for el in res} - set(shapes))
 
     def toSvg(self, opts: Any = None) -> str:
         """
@@ -1195,11 +1173,10 @@ class Workplane(object):
         # handle mirrorPLane
         if isinstance(mirrorPlane, Workplane):
             val = mirrorPlane.val()
-            if isinstance(val, Face):
-                mp = val.normalAt()
-                face = val
-            else:
+            if not isinstance(val, Face):
                 raise ValueError(f"Face required, got {val}")
+            mp = val.normalAt()
+            face = val
         elif isinstance(mirrorPlane, Face):
             mp = mirrorPlane.normalAt()
             face = mirrorPlane
@@ -1220,10 +1197,7 @@ class Workplane(object):
             [obj.mirror(mp, bp) for obj in self.vals() if isinstance(obj, Shape)]
         )
 
-        if union:
-            return self.union(newS)
-        else:
-            return newS
+        return self.union(newS) if union else newS
 
     def translate(self: T, vec: VectorLike) -> T:
         """
@@ -1416,12 +1390,9 @@ class Workplane(object):
         elif isinstance(obj, Vector):
             p = obj
         else:
-            raise RuntimeError("Cannot convert object type '%s' to vector " % type(obj))
+            raise RuntimeError(f"Cannot convert object type '{type(obj)}' to vector ")
 
-        if useLocalCoords:
-            return self.plane.toLocalCoords(p)
-        else:
-            return p
+        return self.plane.toLocalCoords(p) if useLocalCoords else p
 
     def _findFromEdge(self, useLocalCoords: bool = False) -> Edge:
         """
@@ -1478,9 +1449,7 @@ class Workplane(object):
 
         lpoints = []  # coordinates relative to bottom left point
         for x in range(xCount):
-            for y in range(yCount):
-                lpoints.append(Vector(xSpacing * x, ySpacing * y))
-
+            lpoints.extend(Vector(xSpacing * x, ySpacing * y) for y in range(yCount))
         # shift points down and left relative to origin if requested
         offset = Vector()
         if center[0]:
@@ -1518,10 +1487,9 @@ class Workplane(object):
         if count < 1:
             raise ValueError(f"At least 1 element required, requested {count}")
 
-        # Calculate angle between elements
         if fill:
             if abs(math.remainder(angle, 360)) < TOL:
-                angle = angle / count
+                angle /= count
             else:
                 # Inclusive start and end
                 angle = angle / (count - 1) if count > 1 else startAngle
@@ -1569,12 +1537,10 @@ class Workplane(object):
         Here the circle function operates on all three points, and is then extruded to create three
         holes. See :meth:`circle` for how it works.
         """
-        vecs: List[Union[Location, Vector]] = []
-        for pnt in pntList:
-            vecs.append(
-                pnt if isinstance(pnt, Location) else self.plane.toWorldCoords(pnt)
-            )
-
+        vecs: List[Union[Location, Vector]] = [
+            pnt if isinstance(pnt, Location) else self.plane.toWorldCoords(pnt)
+            for pnt in pntList
+        ]
         return self.newObject(vecs)
 
     def center(self: T, x: float, y: float) -> T:
@@ -1801,11 +1767,9 @@ class Workplane(object):
 
         if includeCurrent:
             gstartPoint = self._findFromPoint(False)
-            allPoints = [gstartPoint] + vecs
+            return [gstartPoint] + vecs
         else:
-            allPoints = vecs
-
-        return allPoints
+            return vecs
 
     def spline(
         self: T,
@@ -1909,9 +1873,8 @@ class Workplane(object):
             rv_w = Wire.assembleEdges([e])
             if not forConstruction:
                 self._addPendingWire(rv_w)
-        else:
-            if not forConstruction:
-                self._addPendingEdge(e)
+        elif not forConstruction:
+            self._addPendingEdge(e)
 
         return self.newObject([rv_w if makeWire else e])
 
@@ -1955,9 +1918,8 @@ class Workplane(object):
             rv_w = Wire.assembleEdges([e])
             if not forConstruction:
                 self._addPendingWire(rv_w)
-        else:
-            if not forConstruction:
-                self._addPendingEdge(e)
+        elif not forConstruction:
+            self._addPendingEdge(e)
 
         return self.newObject([rv_w if makeWire else e])
 
@@ -2103,9 +2065,8 @@ class Workplane(object):
             rv_w = Wire.assembleEdges([e])
             if not forConstruction:
                 self._addPendingWire(rv_w)
-        else:
-            if not forConstruction:
-                self._addPendingEdge(e)
+        elif not forConstruction:
+            self._addPendingEdge(e)
 
         return self.newObject([rv_w if makeWire else e])
 
@@ -2332,12 +2293,9 @@ class Workplane(object):
         # clear pending edges or wires.
         wires = cast(
             List[Union[Edge, Wire]],
-            [el for el in chain(self.ctx.pendingEdges, self.ctx.pendingWires)],
+            list(chain(self.ctx.pendingEdges, self.ctx.pendingWires)),
         )
-        if not wires:
-            return []
-
-        return Wire.combine(wires)
+        return [] if not wires else Wire.combine(wires)
 
     def consolidateWires(self: T) -> T:
         """
@@ -3182,7 +3140,7 @@ class Workplane(object):
         :return: a CQ object with the resulting solid selected.
         """
 
-        if not sweepAlongWires is None:
+        if sweepAlongWires is not None:
             multisection = sweepAlongWires
 
             from warnings import warn
@@ -3334,7 +3292,7 @@ class Workplane(object):
         elif isinstance(toUnion, (Solid, Compound)):
             newS = [toUnion]
         else:
-            raise ValueError("Cannot union type '{}'".format(type(toUnion)))
+            raise ValueError(f"Cannot union type '{type(toUnion)}'")
 
         # now combine with existing solid, if there is one
         # look for parents to cut from
@@ -3402,7 +3360,7 @@ class Workplane(object):
         elif isinstance(toCut, (Solid, Compound)):
             solidToCut = (toCut,)
         else:
-            raise ValueError("Cannot cut type '{}'".format(type(toCut)))
+            raise ValueError(f"Cannot cut type '{type(toCut)}'")
 
         newS = solidRef.cut(*solidToCut, tol=tol)
 
@@ -3452,7 +3410,7 @@ class Workplane(object):
         elif isinstance(toIntersect, (Solid, Compound)):
             solidToIntersect = (toIntersect,)
         else:
-            raise ValueError("Cannot intersect type '{}'".format(type(toIntersect)))
+            raise ValueError(f"Cannot intersect type '{type(toIntersect)}'")
 
         newS = solidRef.intersect(*solidToIntersect, tol=tol)
 
@@ -3505,7 +3463,7 @@ class Workplane(object):
         """
         # Handling of `until` passed values
         s: Union[Compound, Solid, Shape]
-        if isinstance(both, float) and taper == None:
+        if isinstance(both, float) and taper is None:
             # Because inserting a new parameter "both" in front of "taper",
             # existing code calling this function with position arguments will
             # pass the taper argument (float) to the "both" argument. This
@@ -3524,11 +3482,11 @@ class Workplane(object):
             both = False
 
         if isinstance(until, str) and until in ("next", "last"):
-            if until == "next":
-                faceIndex = 0
-            elif until == "last":
+            if until == "last":
                 faceIndex = -1
 
+            elif until == "next":
+                faceIndex = 0
             s = self._extrude(
                 None, both=both, taper=taper, upToFace=faceIndex, additive=False
             )
@@ -3605,9 +3563,7 @@ class Workplane(object):
 
         r: Shape = Solid.makeLoft(wiresToLoft, ruled)
 
-        newS = self._combineWithBase(r, combine, clean)
-
-        return newS
+        return self._combineWithBase(r, combine, clean)
 
     def _getFaces(self) -> List[Face]:
         """
@@ -4363,7 +4319,7 @@ class Workplane(object):
         """
 
         if type(self.val()) is Vector:
-            return "&lt {} &gt".format(self.__repr__()[1:-1])
+            return f"&lt {self.__repr__()[1:-1]} &gt"
         else:
             return Compound.makeCompound(
                 _selectShapes(self.objects)

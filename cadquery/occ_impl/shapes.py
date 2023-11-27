@@ -337,9 +337,7 @@ def downcast(obj: TopoDS_Shape) -> TopoDS_Shape:
     """
 
     f_downcast: Any = downcast_LUT[shapetype(obj)]
-    rv = f_downcast(obj)
-
-    return rv
+    return f_downcast(obj)
 
 
 def fix(obj: TopoDS_Shape) -> TopoDS_Shape:
@@ -460,11 +458,8 @@ class Shape(object):
         :type precision_mode: int
         """
 
-        # Handle the extra settings for the STEP export
-        pcurves = 1
-        if "write_pcurves" in kwargs and not kwargs["write_pcurves"]:
-            pcurves = 0
-        precision_mode = kwargs["precision_mode"] if "precision_mode" in kwargs else 0
+        pcurves = 0 if "write_pcurves" in kwargs and not kwargs["write_pcurves"] else 1
+        precision_mode = kwargs.get("precision_mode", 0)
 
         writer = STEPControl_Writer()
         Interface_Static.SetIVal_s("write.surfacecurve.mode", pcurves)
@@ -603,17 +598,16 @@ class Shape(object):
         :returns: The mirrored shape
         """
         if isinstance(mirrorPlane, str):
-            if mirrorPlane == "XY" or mirrorPlane == "YX":
+            if mirrorPlane in ["XY", "YX"]:
                 mirrorPlaneNormalVector = gp_Dir(0, 0, 1)
-            elif mirrorPlane == "XZ" or mirrorPlane == "ZX":
+            elif mirrorPlane in ["XZ", "ZX"]:
                 mirrorPlaneNormalVector = gp_Dir(0, 1, 0)
-            elif mirrorPlane == "YZ" or mirrorPlane == "ZY":
+            elif mirrorPlane in ["YZ", "ZY"]:
                 mirrorPlaneNormalVector = gp_Dir(1, 0, 0)
-        else:
-            if isinstance(mirrorPlane, tuple):
-                mirrorPlaneNormalVector = gp_Dir(*mirrorPlane)
-            elif isinstance(mirrorPlane, Vector):
-                mirrorPlaneNormalVector = mirrorPlane.toDir()
+        elif isinstance(mirrorPlane, tuple):
+            mirrorPlaneNormalVector = gp_Dir(*mirrorPlane)
+        elif isinstance(mirrorPlane, Vector):
+            mirrorPlaneNormalVector = mirrorPlane.toDir()
 
         if isinstance(basePointVector, tuple):
             basePointVector = Vector(basePointVector)
@@ -671,9 +665,7 @@ class Shape(object):
         :param obj: Compute the mass of this object
         """
         Properties = GProp_GProps()
-        calc_function = shape_properties_LUT[shapetype(obj.wrapped)]
-
-        if calc_function:
+        if calc_function := shape_properties_LUT[shapetype(obj.wrapped)]:
             calc_function(obj.wrapped, Properties)
             return Properties.Mass()
         else:
@@ -687,9 +679,7 @@ class Shape(object):
         :param obj: Compute the center of mass of this object
         """
         Properties = GProp_GProps()
-        calc_function = shape_properties_LUT[shapetype(obj.wrapped)]
-
-        if calc_function:
+        if calc_function := shape_properties_LUT[shapetype(obj.wrapped)]:
             calc_function(obj.wrapped, Properties)
             return Vector(Properties.CentreOfMass())
         else:
@@ -704,10 +694,7 @@ class Shape(object):
         """
         total_mass = len(objects)
 
-        weighted_centers = []
-        for o in objects:
-            weighted_centers.append(BoundBox._fromTopoDS(o.wrapped).center)
-
+        weighted_centers = [BoundBox._fromTopoDS(o.wrapped).center for o in objects]
         sum_wc = weighted_centers[0]
         for wc in weighted_centers[1:]:
             sum_wc = sum_wc.add(wc)
@@ -743,12 +730,12 @@ class Shape(object):
             res,
         )
 
-        out: Dict[Shape, List[Shape]] = {}
-        for i in range(1, res.Extent() + 1):
-            out[Shape.cast(res.FindKey(i))] = [
+        out: Dict[Shape, List[Shape]] = {
+            Shape.cast(res.FindKey(i)): [
                 Shape.cast(el) for el in res.FindFromIndex(i)
             ]
-
+            for i in range(1, res.Extent() + 1)
+        }
         return out
 
     def Vertices(self) -> List["Vertex"]:
@@ -825,12 +812,7 @@ class Shape(object):
         else:
             selected = list(objs)
 
-        if len(selected) == 1:
-            rv = selected[0]
-        else:
-            rv = Compound.makeCompound(selected)
-
-        return rv
+        return selected[0] if len(selected) == 1 else Compound.makeCompound(selected)
 
     def vertices(self, selector: Optional[Union[Selector, str]] = None) -> "Shape":
         """
@@ -1106,9 +1088,7 @@ class Shape(object):
         if tol:
             fuse_op.SetFuzzyValue(tol)
 
-        rv = self._bool_op((self,), toFuse, fuse_op)
-
-        return rv
+        return self._bool_op((self,), toFuse, fuse_op)
 
     def intersect(self, *toIntersect: "Shape", tol: Optional[float] = None) -> "Shape":
         """
@@ -1166,11 +1146,7 @@ class Shape(object):
             distance = oc_point.SquareDistance(interPt)
 
             # interDir is not done when `oc_point` and `oc_axis` have the same coord
-            if interDirMk.IsDone():
-                interDir: Any = interDirMk.Value()
-            else:
-                interDir = None
-
+            interDir = interDirMk.Value() if interDirMk.IsDone() else None
             if direction == "AlongAxis":
                 if (
                     interDir is not None
@@ -1256,11 +1232,7 @@ class Shape(object):
             loc = TopLoc_Location()
             poly = BRep_Tool.Triangulation_s(f.wrapped, loc)
             Trsf = loc.Transformation()
-            reverse = (
-                True
-                if f.wrapped.Orientation() == TopAbs_Orientation.TopAbs_REVERSED
-                else False
-            )
+            reverse = f.wrapped.Orientation() == TopAbs_Orientation.TopAbs_REVERSED
 
             # add vertices
             vertices += [
@@ -1572,11 +1544,7 @@ class Mixin1D(object):
         tmp = gp_Pnt()
         res = gp_Vec()
 
-        if mode == "length":
-            param = self.paramAt(locationParam)
-        else:
-            param = locationParam
-
+        param = self.paramAt(locationParam) if mode == "length" else locationParam
         curve.D1(param, tmp, res)
 
         return Vector(gp_Dir(res))
@@ -1593,21 +1561,19 @@ class Mixin1D(object):
 
         if gtype == "CIRCLE":
             circ = curve.Circle()
-            rv = Vector(circ.Axis().Direction())
+            return Vector(circ.Axis().Direction())
         elif gtype == "ELLIPSE":
             ell = curve.Ellipse()
-            rv = Vector(ell.Axis().Direction())
+            return Vector(ell.Axis().Direction())
         else:
             fs = BRepLib_FindSurface(self.wrapped, OnlyPlane=True)
             surf = fs.Surface()
 
-            if isinstance(surf, Geom_Plane):
-                pln = surf.Pln()
-                rv = Vector(pln.Axis().Direction())
-            else:
+            if not isinstance(surf, Geom_Plane):
                 raise ValueError("Normal not defined")
 
-        return rv
+            pln = surf.Pln()
+            return Vector(pln.Axis().Direction())
 
     def Center(self: Mixin1DProtocol) -> Vector:
 
@@ -1654,11 +1620,7 @@ class Mixin1D(object):
 
         curve = self._geomAdaptor()
 
-        if mode == "length":
-            param = self.paramAt(d)
-        else:
-            param = d
-
+        param = self.paramAt(d) if mode == "length" else d
         return Vector(curve.Value(param))
 
     def positions(
@@ -1693,17 +1655,9 @@ class Mixin1D(object):
 
         curve = self._geomAdaptor()
 
-        if mode == "length":
-            param = self.paramAt(d)
-        else:
-            param = d
-
+        param = self.paramAt(d) if mode == "length" else d
         law: GeomFill_TrihedronLaw
-        if frame == "frenet":
-            law = GeomFill_Frenet()
-        else:
-            law = GeomFill_CorrectedFrenet()
-
+        law = GeomFill_Frenet() if frame == "frenet" else GeomFill_CorrectedFrenet()
         law.SetCurve(curve)
 
         tangent, normal, binormal = gp_Vec(), gp_Vec(), gp_Vec()
@@ -1796,12 +1750,7 @@ class Edge(Shape, Mixin1D):
         """
         rv: Union[Wire, Edge]
 
-        if not self.IsClosed():
-            rv = Wire.assembleEdges((self,)).close()
-        else:
-            rv = self
-
-        return rv
+        return Wire.assembleEdges((self,)).close() if not self.IsClosed() else self
 
     def arcCenter(self) -> Vector:
         """
@@ -1835,13 +1784,12 @@ class Edge(Shape, Mixin1D):
 
         circle_gp = gp_Circ(gp_Ax2(pnt.toPnt(), dir.toDir()), radius)
 
-        if angle1 == angle2:  # full circle case
+        if angle1 == angle2:
             return cls(BRepBuilderAPI_MakeEdge(circle_gp).Edge())
-        else:  # arc case
-            circle_geom = GC_MakeArcOfCircle(
-                circle_gp, radians(angle1), radians(angle2), orientation
-            ).Value()
-            return cls(BRepBuilderAPI_MakeEdge(circle_geom).Edge())
+        circle_geom = GC_MakeArcOfCircle(
+            circle_gp, radians(angle1), radians(angle2), orientation
+        ).Value()
+        return cls(BRepBuilderAPI_MakeEdge(circle_geom).Edge())
 
     @classmethod
     def makeEllipse(
@@ -1886,19 +1834,16 @@ class Edge(Shape, Mixin1D):
             correction_angle = 0.0
             ellipse_gp = gp_Elips(ax2, x_radius, y_radius)
 
-        if angle1 == angle2:  # full ellipse case
-            ellipse = cls(BRepBuilderAPI_MakeEdge(ellipse_gp).Edge())
-        else:  # arc case
-            # take correction_angle into account
-            ellipse_geom = GC_MakeArcOfEllipse(
-                ellipse_gp,
-                radians(angle1) - correction_angle,
-                radians(angle2) - correction_angle,
-                sense == 1,
-            ).Value()
-            ellipse = cls(BRepBuilderAPI_MakeEdge(ellipse_geom).Edge())
-
-        return ellipse
+        if angle1 == angle2:
+            return cls(BRepBuilderAPI_MakeEdge(ellipse_gp).Edge())
+        # take correction_angle into account
+        ellipse_geom = GC_MakeArcOfEllipse(
+            ellipse_gp,
+            radians(angle1) - correction_angle,
+            radians(angle2) - correction_angle,
+            sense == 1,
+        ).Value()
+        return cls(BRepBuilderAPI_MakeEdge(ellipse_geom).Edge())
 
     @classmethod
     def makeSpline(
@@ -2087,13 +2032,11 @@ class Wire(Shape, Mixin1D):
         Close a Wire
         """
 
-        if not self.IsClosed():
-            e = Edge.makeLine(self.endPoint(), self.startPoint())
-            rv = Wire.combine((self, e))[0]
-        else:
-            rv = self
+        if self.IsClosed():
+            return self
 
-        return rv
+        e = Edge.makeLine(self.endPoint(), self.startPoint())
+        return Wire.combine((self, e))[0]
 
     @classmethod
     def combine(
@@ -2165,8 +2108,7 @@ class Wire(Shape, Mixin1D):
         """
 
         circle_edge = Edge.makeCircle(radius, center, normal)
-        w = cls.assembleEdges([circle_edge])
-        return w
+        return cls.assembleEdges([circle_edge])
 
     @classmethod
     def makeEllipse(
@@ -2309,12 +2251,11 @@ class Wire(Shape, Mixin1D):
 
         obj = downcast(offset.Shape())
 
-        if isinstance(obj, TopoDS_Compound):
-            rv = [self.__class__(el.wrapped) for el in Compound(obj)]
-        else:
-            rv = [self.__class__(obj)]
-
-        return rv
+        return (
+            [self.__class__(el.wrapped) for el in Compound(obj)]
+            if isinstance(obj, TopoDS_Compound)
+            else [self.__class__(obj)]
+        )
 
     def fillet2D(self, radius: float, vertices: Iterable[Vertex]) -> "Wire":
         """
@@ -2777,13 +2718,8 @@ class Mixin3D(object):
         # note: we prefer 'length' word to 'radius' as opposed to FreeCAD's API
         chamfer_builder = BRepFilletAPI_MakeChamfer(self.wrapped)
 
-        if length2:
-            d1 = length
-            d2 = length2
-        else:
-            d1 = length
-            d2 = length
-
+        d2 = length2 if length2 else length
+        d1 = length
         for e in nativeEdges:
             face = edge_face_map.FindFromKey(e).First()
             chamfer_builder.Add(
@@ -2832,22 +2768,19 @@ class Mixin3D(object):
         shell_builder.Build()
 
         if faceList:
-            rv = self.__class__(shell_builder.Shape())
+            return self.__class__(shell_builder.Shape())
 
-        else:  # if no faces provided a watertight solid will be constructed
-            s1 = self.__class__(shell_builder.Shape()).Shells()[0].wrapped
-            s2 = self.Shells()[0].wrapped
+        s1 = self.__class__(shell_builder.Shape()).Shells()[0].wrapped
+        s2 = self.Shells()[0].wrapped
 
             # s1 can be outer or inner shell depending on the thickness sign
-            if thickness > 0:
-                sol = BRepBuilderAPI_MakeSolid(s1, s2)
-            else:
-                sol = BRepBuilderAPI_MakeSolid(s2, s1)
-
+        sol = (
+            BRepBuilderAPI_MakeSolid(s1, s2)
+            if thickness > 0
+            else BRepBuilderAPI_MakeSolid(s2, s1)
+        )
             # fix needed for the orientations
-            rv = self.__class__(sol.Shape()).fix()
-
-        return rv
+        return self.__class__(sol.Shape()).fix()
 
     def isInside(
         self: ShapeProtocol, point: VectorLike, tolerance: float = 1.0e-6
@@ -2994,7 +2927,7 @@ class Solid(Shape, Mixin3D):
             wire_builder.Close()
             w = wire_builder.Wire()
 
-        edges = [i for i in Shape(w).Edges()]
+        edges = list(Shape(w).Edges())
 
         # MAKE SURFACE
         continuity = GeomAbs_C0  # Fixed, changing to anything else crashes.
@@ -3015,13 +2948,7 @@ class Solid(Shape, Mixin3D):
         )
 
         # THICKEN SURFACE
-        if (
-            abs(thickness) > 0
-        ):  # abs() because negative values are allowed to set direction of thickening
-            return face.thicken(thickness)
-
-        else:  # Return 2D surface only
-            return face
+        return face.thicken(thickness) if (abs(thickness) > 0) else face
 
     @staticmethod
     def isSolid(obj: Shape) -> bool:
@@ -3437,12 +3364,7 @@ class Solid(Shape, Mixin3D):
     @staticmethod
     def _toWire(p: Union[Edge, Wire]) -> Wire:
 
-        if isinstance(p, Edge):
-            rv = Wire.assembleEdges([p,])
-        else:
-            rv = p
-
-        return rv
+        return Wire.assembleEdges([p,]) if isinstance(p, Edge) else p
 
     @multimethod
     def sweep(
@@ -3645,9 +3567,7 @@ class Compound(Shape, Mixin3D):
 
         builder = Font_BRepTextBuilder()
         font_i = StdPrs_BRepFont(
-            NCollection_Utf8String(font_t.FontName().ToCString()),
-            font_kind,
-            float(size),
+            NCollection_Utf8String(font_t.FontName().ToCString()), font_kind, size
         )
         text_flat = Shape(builder.Perform(font_i, NCollection_Utf8String(text)))
 
@@ -3667,15 +3587,13 @@ class Compound(Shape, Mixin3D):
 
         text_flat = text_flat.translate(t)
 
-        if height != 0:
-            vecNormal = text_flat.Faces()[0].normalAt() * height
+        if height == 0:
+            return text_flat.transformShape(position.rG)
 
-            text_3d = BRepPrimAPI_MakePrism(text_flat.wrapped, vecNormal.wrapped)
-            rv = cls(text_3d.Shape()).transformShape(position.rG)
-        else:
-            rv = text_flat.transformShape(position.rG)
+        vecNormal = text_flat.Faces()[0].normalAt() * height
 
-        return rv
+        text_3d = BRepPrimAPI_MakePrism(text_flat.wrapped, vecNormal.wrapped)
+        return cls(text_3d.Shape()).transformShape(position.rG)
 
     def __bool__(self) -> bool:
         """
@@ -3713,11 +3631,7 @@ class Compound(Shape, Mixin3D):
 
         args = tuple(self) + toFuse
 
-        if len(args) <= 1:
-            rv: Shape = args[0]
-        else:
-            rv = self._bool_op(args[:1], args[1:], fuse_op)
-
+        rv = args[0] if len(args) <= 1 else self._bool_op(args[:1], args[1:], fuse_op)
         # fuse_op.RefineEdges()
         # fuse_op.FuseEdges()
 
@@ -3746,7 +3660,7 @@ class Compound(Shape, Mixin3D):
         """
 
         shape_map = TopTools_IndexedDataMapOfShapeListOfShape()
-        shapetypes = set(shapetype(ch.wrapped) for ch in self)
+        shapetypes = {shapetype(ch.wrapped) for ch in self}
 
         for t in shapetypes:
             TopExp.MapShapesAndAncestors_s(
@@ -3764,7 +3678,7 @@ class Compound(Shape, Mixin3D):
         """
 
         shape_map = TopTools_IndexedDataMapOfShapeListOfShape()
-        shapetypes = set(shapetype(ch.wrapped) for ch in self)
+        shapetypes = {shapetype(ch.wrapped) for ch in self}
 
         for t in shapetypes:
             TopExp.MapShapesAndAncestors_s(
@@ -3819,11 +3733,7 @@ def sortWiresByBuildOrder(wireList: List[Wire]) -> List[List[Wire]]:
     # make a Face, NB: this might return a compound of faces
     faces = Face.makeFromWires(wireList[0], wireList[1:])
 
-    rv = []
-    for face in faces.Faces():
-        rv.append([face.outerWire(),] + face.innerWires())
-
-    return rv
+    return [[face.outerWire(),] + face.innerWires() for face in faces.Faces()]
 
 
 def wiresToFaces(wireList: List[Wire]) -> List[Face]:

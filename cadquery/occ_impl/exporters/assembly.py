@@ -68,13 +68,10 @@ def exportAssembly(
     :type precision_mode: int
     """
 
-    # Handle the extra settings for the STEP export
-    pcurves = 1
-    if "write_pcurves" in kwargs and not kwargs["write_pcurves"]:
-        pcurves = 0
-    precision_mode = kwargs["precision_mode"] if "precision_mode" in kwargs else 0
-    fuzzy_tol = kwargs["fuzzy_tol"] if "fuzzy_tol" in kwargs else None
-    glue = kwargs["glue"] if "glue" in kwargs else False
+    pcurves = 0 if "write_pcurves" in kwargs and not kwargs["write_pcurves"] else 1
+    precision_mode = kwargs.get("precision_mode", 0)
+    fuzzy_tol = kwargs.get("fuzzy_tol", None)
+    glue = kwargs.get("glue", False)
 
     # Use the assembly name if the user set it
     assembly_name = assy.name if assy.name else str(uuid.uuid1())
@@ -196,14 +193,9 @@ def exportGLTF(
 
     # If the caller specified the binary option, respect it
     if binary is None:
-        # Handle the binary option for GLTF export based on file extension
-        binary = True
         path_parts = path.split(".")
 
-        # Binary will be the default if the user specified a non-standard file extension
-        if len(path_parts) > 0 and path_parts[-1] == "gltf":
-            binary = False
-
+        binary = not path_parts or path_parts[-1] != "gltf"
     # map from CadQuery's right-handed +Z up coordinate system to glTF's right-handed +Y up coordinate system
     # https://registry.khronos.org/glTF/specs/2.0/glTF-2.0.html#coordinate-system-and-units
     orig_loc = assy.loc

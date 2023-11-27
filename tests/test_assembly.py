@@ -642,7 +642,7 @@ def test_toJSON(simple_assy, nested_assy, empty_top_assy):
 )
 def test_save(extension, args, nested_assy, nested_assy_sphere):
 
-    filename = "nested." + extension
+    filename = f"nested.{extension}"
     nested_assy.save(filename, *args)
     assert os.path.exists(filename)
 
@@ -1392,7 +1392,7 @@ def test_toCompound(simple_assy, nested_assy):
     assy0.constrain("box1@faces@>Z", "assy1/box2@faces@<Z", "Plane")
     # before solving there should be no face with Center = (0, 0, 18)
     c2 = assy0.toCompound()
-    assert not cq.Vector(0, 0, 18) in [x.Center() for x in c2.Faces()]
+    assert cq.Vector(0, 0, 18) not in [x.Center() for x in c2.Faces()]
     # after solving there should be a face with Center = (0, 0, 18)
     assy0.solve()
     c3 = assy0.toCompound()

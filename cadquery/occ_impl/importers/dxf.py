@@ -141,8 +141,7 @@ def _dxf_convert(elements, tol):
     edges = []
 
     for el in elements:
-        conv = DXF_CONVERTERS.get(el.dxf.dxftype)
-        if conv:
+        if conv := DXF_CONVERTERS.get(el.dxf.dxftype):
             edges.extend(conv(el))
 
     if edges:
@@ -179,12 +178,12 @@ def _importDXF(
     layers = dxf.modelspace().groupby(dxfattrib="layer")
 
     # normalize layer names to conform the DXF spec
-    names = set([name.lower() for name in layers.keys()])
+    names = {name.lower() for name in layers.keys()}
 
     if include:
-        selected = names & set([name.lower() for name in include])
+        selected = names & {name.lower() for name in include}
     elif exclude:
-        selected = names - set([name.lower() for name in exclude])
+        selected = names - {name.lower() for name in exclude}
     else:
         selected = names
 
@@ -195,7 +194,8 @@ def _importDXF(
         if name.lower() in selected:
             res = _dxf_convert(layers[name], tol)
             wire_sets = sortWiresByBuildOrder(res)
-            for wire_set in wire_sets:
-                faces.append(Face.makeFromWires(wire_set[0], wire_set[1:]))
-
+            faces.extend(
+                Face.makeFromWires(wire_set[0], wire_set[1:])
+                for wire_set in wire_sets
+            )
     return faces

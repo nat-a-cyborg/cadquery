@@ -20,8 +20,7 @@ def parse(script_source):
     :param script_source: the script to run. Must be a valid cadquery script
     :return: a CQModel object that defines the script and allows execution
     """
-    model = CQModel(script_source)
-    return model
+    return CQModel(script_source)
 
 
 class CQModel(object):
@@ -135,7 +134,7 @@ class CQModel(object):
         for k, v in params.items():
             if k not in model_parameters:
                 raise InvalidParameterError(
-                    "Cannot set value '%s': not a parameter of the model." % k
+                    f"Cannot set value '{k}': not a parameter of the model."
                 )
 
             p = model_parameters[k]
@@ -282,11 +281,7 @@ class InputParameter:
         if self.varType == NumberParameterType:
             try:
                 # Sometimes a value must stay as an int for the script to work properly
-                if isinstance(new_value, int):
-                    f = int(new_value)
-                else:
-                    f = float(new_value)
-
+                f = int(new_value) if isinstance(new_value, int) else float(new_value)
                 self.ast_node.n = f
             except ValueError:
                 raise InvalidParameterError(
@@ -303,18 +298,14 @@ class InputParameter:
                     self.ast_node.value = True
                 else:
                     self.ast_node.id = "True"
+            elif hasattr(ast, "NameConstant"):
+                self.ast_node.value = False
             else:
-                if hasattr(ast, "NameConstant"):
-                    self.ast_node.value = False
-                else:
-                    self.ast_node.id = "False"
+                self.ast_node.id = "False"
         elif self.varType == TupleParameterType:
             self.ast_node.n = new_value
 
-            # Build the list of constants to set as the tuple value
-            constants = []
-            for nv in new_value:
-                constants.append(ast.Constant(value=nv))
+            constants = [ast.Constant(value=nv) for nv in new_value]
             self.ast_node.elts = constants
             ast.fix_missing_locations(self.ast_node)
         else:
@@ -404,15 +395,8 @@ class ScriptExecutionError(Exception):
     """
 
     def __init__(self, line=None, message=None):
-        if line is None:
-            self.line = 0
-        else:
-            self.line = line
-
-        if message is None:
-            self.message = "Unknown Script Error"
-        else:
-            self.message = message
+        self.line = 0 if line is None else line
+        self.message = "Unknown Script Error" if message is None else message
 
     def full_message(self):
         return self.__repr__()
@@ -421,7 +405,7 @@ class ScriptExecutionError(Exception):
         return self.__repr__()
 
     def __repr__(self):
-        return "ScriptError [Line %s]: %s" % (self.line, self.message)
+        return f"ScriptError [Line {self.line}]: {self.message}"
 
 
 class EnvironmentBuilder(object):
@@ -561,8 +545,7 @@ class ConstantAssignmentFinder(ast.NodeTransformer):
                 )
 
         except:
-            print("Unable to handle assignment for variable '%s'" % var_name)
-            pass
+            print(f"Unable to handle assignment for variable '{var_name}'")
 
     def visit_Assign(self, node):
 
@@ -592,6 +575,6 @@ class ConstantAssignmentFinder(ast.NodeTransformer):
                         self.handle_assignment(n.id, v)
         except:
             traceback.print_exc()
-            print("Unable to handle assignment for node '%s'" % ast.dump(left_side))
+            print(f"Unable to handle assignment for node '{ast.dump(left_side)}'")
 
         return node

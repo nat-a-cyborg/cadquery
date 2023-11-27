@@ -249,14 +249,11 @@ class cq_directive(Directive):
         # get rid of new lines
         out_svg = out_svg.replace("\n", "")
 
-        txt_align = "left"
-        if "align" in options:
-            txt_align = options["align"]
-
+        txt_align = options["align"] if "align" in options else "left"
         lines.extend((template % locals()).split("\n"))
 
         lines.extend(["::", ""])
-        lines.extend(["    %s" % row.rstrip() for row in plot_code.split("\n")])
+        lines.extend([f"    {row.rstrip()}" for row in plot_code.split("\n")])
         lines.append("")
 
         if len(lines):
@@ -290,21 +287,20 @@ class cq_directive_vtk(Directive):
         try:
             result = cqgi.parse(plot_code).build()
 
-            if result.success:
-                if result.first_result:
-                    shape = result.first_result.shape
-                else:
-                    shape = result.env[options.get("select", "result")]
-
-                if isinstance(shape, Assembly):
-                    assy = shape
-                elif isinstance(shape, Sketch):
-                    assy = Assembly(shape._faces, color=Color(*DEFAULT_COLOR))
-                else:
-                    assy = Assembly(shape, color=Color(*DEFAULT_COLOR))
-            else:
+            if not result.success:
                 raise result.exception
 
+            shape = (
+                result.first_result.shape
+                if result.first_result
+                else result.env[options.get("select", "result")]
+            )
+            if isinstance(shape, Assembly):
+                assy = shape
+            elif isinstance(shape, Sketch):
+                assy = Assembly(shape._faces, color=Color(*DEFAULT_COLOR))
+            else:
+                assy = Assembly(shape, color=Color(*DEFAULT_COLOR))
         except Exception:
             traceback.print_exc()
             assy = Assembly(Compound.makeText("CQGI error", 10, 5))
@@ -325,7 +321,7 @@ class cq_directive_vtk(Directive):
         )
 
         lines.extend(["::", ""])
-        lines.extend(["    %s" % row.rstrip() for row in plot_code.split("\n")])
+        lines.extend([f"    {row.rstrip()}" for row in plot_code.split("\n")])
         lines.append("")
 
         if len(lines):

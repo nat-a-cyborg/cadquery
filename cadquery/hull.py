@@ -169,13 +169,9 @@ def select_lowest(arcs: Arcs, points: Points) -> Entity:
 
 def pt_pt(p1: Point, p2: Point) -> Tuple[float, Segment]:
 
-    angle = 0
-
     dx, dy = p2.x - p1.x, p2.y - p1.y
 
-    if (dx, dy) != (0, 0):
-        angle = atan2p(dx, dy)
-
+    angle = atan2p(dx, dy) if (dx, dy) != (0, 0) else 0
     return angle, Segment(p1, p2)
 
 
@@ -301,15 +297,9 @@ def get_angle(current: Entity, e: Entity) -> Tuple[float, Segment]:
         return inf, Segment(Point(inf, inf), Point(inf, inf))
 
     if isinstance(current, Point):
-        if isinstance(e, Point):
-            return pt_pt(current, e)
-        else:
-            return pt_arc(current, e)
+        return pt_pt(current, e) if isinstance(e, Point) else pt_arc(current, e)
     else:
-        if isinstance(e, Point):
-            return arc_pt(current, e)
-        else:
-            return arc_arc(current, e)
+        return arc_pt(current, e) if isinstance(e, Point) else arc_arc(current, e)
 
 
 def update_hull(
